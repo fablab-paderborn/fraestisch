@@ -14,6 +14,10 @@
  * 5. wenn Encoder länger gedrückt wird (1  sec) Fräse in maximale  untere Position  fahren  (wenn Frästisch nicht gebraucht  wird)
  * PS: Encoder macht 20 Klicks pro Umdrehung, Steigung einer M8 Gewindestange = 1,25 mm
  *
+ *
+ *  Board: Arduino / Genuino Micro
+ *  Maximum - 50mm
+ *
  */
 
 
@@ -66,11 +70,19 @@ boolean button_gedrueckt = false;
  *   x
  *   
  */
+
 long ist_position = 0;
 long soll_position = 0;
 
 double ist_position_mm = 0;
 double soll_position_mm = 0;
+
+long maschine_ist_position = 0;
+long maschine_soll_position = 0;
+
+double maschine_ist_position_mm = 0;
+double maschine_soll_position_mm = 0;
+
 
 long maximale_position = 50;
 boolean position_geaendert = false;
@@ -108,6 +120,7 @@ void motor_schritt_oben()
     delayMicroseconds(50);
 
     ist_position++;
+    maschine_ist_position++;
     position_geaendert = true;
 }
 
@@ -122,6 +135,7 @@ void motor_schritt_unten()
     delayMicroseconds(50);
 
     ist_position--;
+    maschine_ist_position--;
     position_geaendert = true;
 }
 
@@ -162,9 +176,12 @@ void setup() {
 
   // LCD schreiben
   lcd.setCursor(0, 0); 
-  lcd.print("i=      s=      "); 
-  lcd.setCursor(0, 1);
-  lcd.print("encoder =       ");
+  lcd.print("i=       s=      "); 
+  lcd.setCursor(0, 1); 
+  lcd.print("i=       s=      "); 
+
+//  lcd.setCursor(0, 1);
+//  lcd.print("encoder =       ");
 
 }
 
@@ -183,14 +200,35 @@ void loop() {
     Serial.print(neueEncoderPosition);
     Serial.println();
 
-    soll_position = soll_position + ((neueEncoderPosition - alteEncoderPosition) * 640);
+    maschine_soll_position = maschine_soll_position - ((neueEncoderPosition - alteEncoderPosition) * 64);
+
+    Serial.print("maschine_soll_position = ");
+    Serial.print(maschine_soll_position);
+    Serial.println();
+    Serial.print("soll_position = ");
+    Serial.print(soll_position);
+    Serial.println();
     
+    if (maschine_soll_position <= 0) {
+      maschine_soll_position = 0;
+    } else if (maschine_soll_position >= STEPS_PRO_MM * maximale_position) {
+      maschine_soll_position = STEPS_PRO_MM * maximale_position;
+    } else {
+      soll_position = soll_position - ((neueEncoderPosition - alteEncoderPosition) * 64);
+    }
+
+//    if (maschine_soll_position >= STEPS_PRO_MM * maximale_position) {
+//      maschine_soll_position = STEPS_PRO_MM * maximale_position;
+//    } else {
+//      soll_position = soll_position - ((neueEncoderPosition - alteEncoderPosition) * 64);
+//    }
+
     alteEncoderPosition = neueEncoderPosition;
 
-    lcd.setCursor(10, 1);
-    lcd.print("      "); 
-    lcd.setCursor(10, 1);
-    lcd.print(neueEncoderPosition);
+//    lcd.setCursor(10, 1);
+//    lcd.print("      "); 
+//    lcd.setCursor(10, 1);
+//    lcd.print(neueEncoderPosition);
 
     position_geaendert = true;
 
@@ -221,6 +259,8 @@ void loop() {
       } else {
         state = STATE_REFERENZIERT;
         soll_position = ist_position;
+        maschine_ist_position = STEPS_PRO_MM * maximale_position;
+        maschine_soll_position = maschine_ist_position;
         Serial.println("State STATE_REFERENZFAHRT > STATE_REFERENZIERT");
         position_geaendert = true;
       }
@@ -268,17 +308,30 @@ void loop() {
       // mm berechnen
       soll_position_mm = ((double) soll_position) / ((double) STEPS_PRO_MM );
       ist_position_mm  = ((double) ist_position)  / ((double) STEPS_PRO_MM );
-  
+
+      maschine_soll_position_mm = ((double) maschine_soll_position) / ((double) STEPS_PRO_MM );
+      maschine_ist_position_mm  = ((double) maschine_ist_position)  / ((double) STEPS_PRO_MM );
+        
       lcd.setCursor(2, 0);
       lcd.print("      "); 
       lcd.setCursor(2, 0);
-      lcd.print(ist_position_mm);
+      lcd.print(ist_position_mm, 1);
   
-      lcd.setCursor(10, 0);
+      lcd.setCursor(11, 0);
       lcd.print("      "); 
-      lcd.setCursor(10, 0);
-      lcd.print(soll_position_mm);
-      
+      lcd.setCursor(11, 0);
+      lcd.print(soll_position_mm, 1);
+
+      lcd.setCursor(2, 1);
+      lcd.print("      "); 
+      lcd.setCursor(2, 1);
+      lcd.print(maschine_ist_position_mm, 1);
+  
+      lcd.setCursor(11, 1);
+      lcd.print("      "); 
+      lcd.setCursor(11, 1);
+      lcd.print(maschine_soll_position_mm, 1);
+
       position_geaendert = false;
       
     }
